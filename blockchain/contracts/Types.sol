@@ -6,6 +6,7 @@ pragma solidity ^0.8.28;
  * @dev Custom data types used throughout the Drug Supply Chain
  */
 library Types {
+    /// @notice Different roles a user can have in the supply chain
     enum UserRole {
         Manufacturer, // 0
         Supplier, // 1
@@ -13,6 +14,7 @@ library Types {
         Customer // 3
     }
 
+    /// @notice Details of a registered user
     struct UserDetails {
         UserRole role;
         address id_;
@@ -20,6 +22,7 @@ library Types {
         string email;
     }
 
+    /// @notice Categories of product types
     enum ProductType {
         BCG, // 0
         RNA, // 1
@@ -28,11 +31,21 @@ library Types {
         NasalFlu // 4
     }
 
-    struct UserHistory {
-        address id_; // Ethereum address of the user
-        uint256 date; // Timestamp (epoch UTC) when action was taken (added/purchased)
+    /// @notice Product status in the supply chain
+    enum ProductStatus {
+        Created, // 0
+        InTransit, // 1
+        Delivered, // 2
+        Verified // 3
     }
 
+    /// @notice History entry representing an action taken by a user
+    struct UserHistory {
+        address id_; // Ethereum address of the user
+        uint256 date; // Timestamp when action was taken
+    }
+
+    /// @notice Full lifecycle history of a product
     struct ProductHistory {
         UserHistory manufacturer;
         UserHistory supplier;
@@ -40,6 +53,7 @@ library Types {
         UserHistory[] customers;
     }
 
+    /// @notice Complete product data
     struct Product {
         string name;
         string manufacturerName;
@@ -55,5 +69,10 @@ library Types {
         string usage;
         string[] composition;
         string[] sideEffects;
+        bytes32 id_;
+        address from_;
+        address to_;
+        address owner;
+        ProductStatus status;
     }
 }
