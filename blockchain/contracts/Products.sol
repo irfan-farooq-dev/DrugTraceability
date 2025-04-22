@@ -5,168 +5,81 @@ import "./Types.sol";
 
 /**
  * @title Products
- * @dev Manages the lifecycle of products in the supply chain
+ * @dev Manages product lifecycle: creation, transfer, delivery, and verification
  */
 contract Products {
-    Types.Product[] internal products;
-    mapping(string => Types.Product) internal product;
-    mapping(address => string[]) internal userLinkedProducts;
-    mapping(string => Types.ProductHistory) internal productHistory;
+    using Types for Types.Product;
+    using Types for Types.ProductStatus;
+
+    // Mapping of product ID to product data
+    mapping(bytes32 => Types.Product) internal products;
 
     // Events
-    event NewProduct(
-        string name,
-        string manufacturerName,
-        string scientificName,
-        string barcodeId,
-        uint256 manDateEpoch,
-        uint256 expDateEpoch
-    );
+    event ProductCreated(bytes32 indexed id_, string name);
+    event ProductDelivered(bytes32 indexed id_, address indexed to);
+    event ProductVerified(bytes32 indexed id_);
 
-    event ProductOwnershipTransfer(
-        string name,
-        string manufacturerName,
-        string scientificName,
-        string barcodeId,
-        string buyerName,
-        string buyerEmail
-    );
+    /// @notice Adds a new product to the supply chain
+    function add(Types.Product memory product_) internal {
+        require(product_.id_ != bytes32(0), "Invalid product ID");
+        require(!exists(product_.id_), "Product already exists");
 
-    // Returns all products owned by msg.sender
-    function getUserProducts() internal view returns (Types.Product[] memory) {
-        string[] memory ids = userLinkedProducts[msg.sender];
-        Types.Product[] memory myProducts = new Types.Product[](ids.length);
-        for (uint256 i = 0; i < ids.length; i++) {
-            myProducts[i] = product[ids[i]];
-        }
-        return myProducts;
+        products[product_.id_] = product_;
+        emit ProductCreated(product_.id_, product_.name);
     }
 
-    // Get specific product details and its full history
-    function getSpecificProduct(
-        string memory barcodeId
-    )
-        internal
-        view
-        returns (Types.Product memory, Types.ProductHistory memory)
-    {
-        return (product[barcodeId], productHistory[barcodeId]);
+    /// @notice Transfers product ownership and sets status to InTransit
+    function transfer(bytes32 id_, address to_) internal {
+        require(id_ != bytes32(0), "Empty product ID");
+        require(to_ != address(0), "Invalid recipient");
+        require(exists(id_), "Product does not exist");
+
+        Types.Product storage product = products[id_];
+        product.to_ = to_;
+        product.status = Types.ProductStatus.InTransit;
     }
 
-    // Adds a new product to the blockchain
-    function addAProduct(
-        Types.Product memory product_,
-        uint256 currentTime
-    ) internal productNotExists(product_.barcodeId) {
+    /// @notice Marks product as delivered and updates current owner
+    function deliver(bytes32 id_, address by_) internal {
+        require(id_ != bytes32(0), "Empty product ID");
+        require(by_ != address(0), "Invalid sender");
+        require(exists(id_), "Product does not exist");
+
+        Types.Product storage product = products[id_];
+        product.from_ = by_;
+        product.owner = product.to_;
+        product.status = Types.ProductStatus.Delivered;
+
+        emit ProductDelivered(id_, product.to_);
+    }
+
+    /// @notice Verifies authenticity of a delivered product
+    function verify(bytes32 id_, address user) internal {
+        require(id_ != bytes32(0), "Empty product ID");
+        require(user != address(0), "Invalid user");
+        require(exists(id_), "Product does not exist");
+
+        Types.Product storage product = products[id_];
         require(
-            product_.manufacturer == msg.sender,
-            "Only manufacturer can add"
+            product.status == Types.ProductStatus.Delivered,
+            "Product not delivered"
         );
-        products.push(product_);
-        product[product_.barcodeId] = product_;
-        productHistory[product_.barcodeId].manufacturer = Types.UserHistory({
-            id_: msg.sender,
-            date: currentTime
-        });
-        userLinkedProducts[msg.sender].push(product_.barcodeId);
+        require(product.owner == user, "Only owner can verify");
 
-        emit NewProduct(
-            product_.name,
-            product_.manufacturerName,
-            product_.scientificName,
-            product_.barcodeId,
-            product_.manDateEpoch,
-            product_.expDateEpoch
-        );
+        product.status = Types.ProductStatus.Verified;
+        emit ProductVerified(id_);
     }
 
-    // Transfers ownership from current user to next role
-    function sell(
-        address buyer,
-        string memory barcodeId,
-        Types.UserDetails memory buyerDetails,
-        uint256 currentTime
-    ) internal productExists(barcodeId) {
-        Types.Product memory prod = product[barcodeId];
-        Types.UserHistory memory history = Types.UserHistory({
-            id_: buyerDetails.id_,
-            date: currentTime
-        });
+    /// @notice Retrieves a product's data
+    function get(bytes32 id_) internal view returns (Types.Product memory) {
+        require(id_ != bytes32(0), "Empty product ID");
+        require(exists(id_), "Product does not exist");
 
-        if (buyerDetails.role == Types.UserRole.Supplier) {
-            productHistory[barcodeId].supplier = history;
-        } else if (buyerDetails.role == Types.UserRole.Vendor) {
-            productHistory[barcodeId].vendor = history;
-        } else if (buyerDetails.role == Types.UserRole.Customer) {
-            productHistory[barcodeId].customers.push(history);
-        } else {
-            revert("Invalid role for transfer");
-        }
-
-        transferOwnership(msg.sender, buyer, barcodeId);
-
-        emit ProductOwnershipTransfer(
-            prod.name,
-            prod.manufacturerName,
-            prod.scientificName,
-            prod.barcodeId,
-            buyerDetails.name,
-            buyerDetails.email
-        );
+        return products[id_];
     }
 
-    // Moves product from seller to buyer
-    function transferOwnership(
-        address seller,
-        address buyer,
-        string memory productId
-    ) internal {
-        userLinkedProducts[buyer].push(productId);
-
-        string[] storage sellerProducts = userLinkedProducts[seller];
-        uint256 indexToRemove = sellerProducts.length;
-
-        for (uint256 i = 0; i < sellerProducts.length; i++) {
-            if (compareStrings(sellerProducts[i], productId)) {
-                indexToRemove = i;
-                break;
-            }
-        }
-
-        require(indexToRemove < sellerProducts.length, "Product not found");
-
-        if (sellerProducts.length == 1) {
-            delete userLinkedProducts[seller];
-        } else {
-            sellerProducts[indexToRemove] = sellerProducts[
-                sellerProducts.length - 1
-            ];
-            sellerProducts.pop();
-        }
-    }
-
-    // Utility string comparison
-    function compareStrings(
-        string memory a,
-        string memory b
-    ) internal pure returns (bool) {
-        return keccak256(bytes(a)) == keccak256(bytes(b));
-    }
-
-    // Modifiers
-    modifier productExists(string memory id) {
-        require(
-            !compareStrings(product[id].barcodeId, ""),
-            "Product does not exist"
-        );
-        _;
-    }
-
-    modifier productNotExists(string memory id) {
-        require(
-            compareStrings(product[id].barcodeId, ""),
-            "Product already exists"
-        );
-        _;
+    /// @notice Checks if a product exists
+    function exists(bytes32 id_) internal view returns (bool) {
+        return products[id_].id_ != bytes32(0);
     }
 }

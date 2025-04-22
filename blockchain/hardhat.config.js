@@ -1,4 +1,6 @@
-require("@nomicfoundation/hardhat-toolbox");
+require("@nomiclabs/hardhat-ethers");
+// require("@nomiclabs/hardhat-waffle"); // if needed for testing
+// require("chai"); // if needed
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -7,14 +9,13 @@ module.exports = {
     optimizer: {
       enabled: true,
       runs: 50  // lower runs = smaller size
-    }
+    },
+    viaIR: true
   },
   networks: {
     localhost: {
-      url: "http://127.0.0.1:7545", // Ganache default
-      accounts: [
-        "0xaa23b807c75073fd65b872e0811713da6323ad781bf0a23e2e37036561eebb5c"
-      ],
+      url: "http://127.0.0.1:8545", // Ganache default
+      // chainId: 1337 
     },
-  },
+  }
 };
