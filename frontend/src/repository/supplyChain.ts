@@ -8,15 +8,16 @@ const productList = require("./data-1.json");
 
 declare let window: any;
 
-export class SupplyChainService {
+export class SupplyChainService {  
   private static instance: SupplyChainService;
   private _supplyChainContract!: Contract;
   private _accountAdress: string | undefined;
 
-  // private constructor() {
-  //   this._supplyChainContract = this.getContract(CONTRACT_ADDRESS);
-  //   SupplyChainService.eventContract = this._supplyChainContract;
-  // }
+  private constructor() {
+    this._supplyChainContract = this.getContract();
+    // SupplyChainService.eventContract = this._supplyChainContract;
+  }
+
   public static getInstance(): SupplyChainService {
     if (!SupplyChainService.instance) {
       SupplyChainService.instance = new SupplyChainService();
@@ -24,10 +25,15 @@ export class SupplyChainService {
     return SupplyChainService.instance;
   }
   checkedWallet = async () => {
+  console.log("Contract Address: ", CONTRACT_ADDRESS);
+  console.log('ChainId: ', `0x${Number(1337).toString(16)}`)
+  console.log("Contract ABI functions:", ContractABI.abi.map((f: any) => f.name));
+
     try {
       const { ethereum } = window;
+      console.log("window.ethereum is", window.ethereum);
       if (!ethereum) {
-        alert("Get MetaMask!");
+        alert("MetaMask is not connected!");
         return false;
       }
       await ethereum.enable();
@@ -37,7 +43,7 @@ export class SupplyChainService {
       });
       await ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: `0x${Number(4).toString(16)}` }],
+        params: [{ chainId: `0x${Number(1337).toString(16)}` }],
       });
       this._accountAdress = accounts[0];
       this._supplyChainContract = this.getContract();
@@ -53,6 +59,9 @@ export class SupplyChainService {
   }
 
   getContract() {
+    if (!window.ethereum) {
+      throw new Error("MetaMask not found");
+    }
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     return new ethers.Contract(CONTRACT_ADDRESS, ContractABI["abi"], signer);
@@ -85,9 +94,12 @@ export class SupplyChainService {
   }
   async getAllProducts(): Promise<Product[]> {
     try {
-      await this.ethEnabled();
-      const _list = await this._supplyChainContract.getAllProducts();
-      const productList: Product[] = _list;
+      const walletConnected = await this.ethEnabled();  // Ensure MetaMask
+      if (!walletConnected || !this._supplyChainContract) {
+        throw new Error("Wallet not connected or contract not initialized");
+      }
+      // const _list = await this._supplyChainContract.getAllProducts();
+      // const productList: Product[] = _list;
       return productList;
     } catch (error) {
       console.log(error);
@@ -114,7 +126,7 @@ export class SupplyChainService {
       const newProductData = { ...product, productHistory: data[1] };
       return newProductData;
     } catch (error) {
-      throw new Error("Product could be fetched");
+      throw new Error("Product could not be fetched");
     }
   }
 

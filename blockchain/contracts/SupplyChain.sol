@@ -6,10 +6,10 @@ import "./UsersContract.sol";
 import "./ProductsContract.sol";
 
 /**
- * @title SupplyChainRouter
+ * @title SupplyChain
  * @dev Central contract that delegates user and product logic to modular contracts
  */
-contract SupplyChainRouter {
+contract SupplyChain {
     UsersContract private usersContract;
     ProductsContract private productsContract;
 

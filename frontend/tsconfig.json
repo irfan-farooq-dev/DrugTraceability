@@ -15,7 +15,9 @@
     "jsx": "react-jsx",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "incremental": true
+    "incremental": true,
+    "types": ["node"],
+    "esModuleInterop": true
   },
   "include": ["src"]
 }

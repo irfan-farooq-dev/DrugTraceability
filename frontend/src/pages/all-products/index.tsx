@@ -28,7 +28,7 @@ export const AllProducts = () => {
     SupplyChainService.getInstance()
       .getContract()
       .on(
-        "newProduct",
+        "addProduct",
         async (
           name,
           manufacturerName,

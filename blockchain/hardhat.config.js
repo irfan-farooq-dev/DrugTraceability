@@ -14,8 +14,8 @@ module.exports = {
   },
   networks: {
     localhost: {
-      url: "http://127.0.0.1:8545", // Ganache default
-      // chainId: 1337 
+      url: "http://127.0.0.1:7545", // Ganache default
+      chainId: 1337 
     },
   }
 };

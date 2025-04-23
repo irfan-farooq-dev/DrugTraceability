@@ -9,13 +9,13 @@ async function main() {
   const products = await ProductsContract.deploy();
   await products.deployed();
 
-  const SupplyChainRouter = await ethers.getContractFactory("SupplyChainRouter");
-  const router = await SupplyChainRouter.deploy(users.address, products.address);
+  const SupplyChain = await ethers.getContractFactory("SupplyChain");
+  const router = await SupplyChain.deploy(users.address, products.address);
   await router.deployed();
 
   console.log("UsersContract deployed to:", users.address);
   console.log("ProductsContract deployed to:", products.address);
-  console.log("SupplyChainRouter deployed to:", router.address);
+  console.log("SupplyChain deployed to:", router.address);
 }
 
 main().catch((error) => {
